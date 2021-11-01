@@ -1,133 +1,223 @@
-#include <math.h>
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
- #include <espl_lib.c>
- int main()
- {
-  unsigned int a;
-  char *b = NULL;
-  int c;
- unsigned int e;
- unsigned int dekade;
- int count = 0;
- unsigned int umgekehrte_zahl;
- unsigned int summe =0;
- int abbruch = 0;
- unsigned int k, m, n;
-  
-   printf("In diesem kleinem Programm werden die Zahlen in die Woerter umgewandelt\n");
-  
-  while(abbruch == 0)
-  {
-     printf("Zahl eingeben und die Ausgabe in Woertern sehen [1] \n");
-     printf("Programm beenden [0] \n");
-     printf("Ihre Wahl: ");
-     scanf("%d", &c);
-      
-     if (c == 0)
-     {
- 
-       printf("Programm beendet :) :) :=) ");
- 
- 
- 
- 
- 
-       abbruch = 1;
-       break;
-       }
-       else if ( c== 1)
-       {
-       printf("Geben Sie eine Zahl ein: ");
-       scanf("%d", &a);
-       printf("Die Darstellung der eingegebenen Zahl in Woertern sieht so aus: ");
-       
-       //Spezialfall Zero
-       
-       if(a==0)
-       {
-       printf("zero\n");
-       continue;
-       }
-       
-      
-         
-       dekade =a;
-       
-      //Hier berechne ich die Anzahl der Ziffer 
-     
-       for(;;)
-      {
-       dekade =dekade/10;
-       if (dekade == 0)
-       {
-       break;
-       }
-       else
-       {
-       count++;
-       }}  
- 
- //HIe  transformiere ich z.B. 123 in 321 und zeige es
-  
-     n=a;
-     for(int i=0;i<count+1;i++)
-       {
-       e = n % 10;
-       umgekehrte_zahl=e;
-       
-       
-     for(int j=0;j<count-i;j++)
-     { umgekehrte_zahl = umgekehrte_zahl*10;
-     
-     }
-      summe =summe +umgekehrte_zahl;
-      n=n/10;
-       }
-    
-       
-       b = num_to_words(summe);
-      
-       for(int i=0;b[i]!='\0';i++)
-       {
-       printf("%c", b[i]);
-       }
-    
-       
-       summe =0;
-       count =0;
-       
-        if(a%10==0)
-       {
-       
-        k=a%10;
-        m=a/10;
-           
-         for(;;)
-         { 
-         printf(" zero");
-         k=m%10;
-         m=m/10;
-         if(k!=0)
-         {
-         break;}
-         continue;
-         
-       
-         
-         }
-       
-         }
- printf("\n");
-       
-      
-       }
-       else
-       {
-        printf("Bitte geben Sie entweder 1 um eine Zahl einzugeben oder 0 um Programm zu beenden\n");
-      
-       }
-       }
-       }
-         
+
+/****************************************************************************
+  ----------------------------------------------------------------------
+  Copyright (C) Alexander Hoffman, 2019
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  ----------------------------------------------------------------------
+ ****************************************************************************/
+
+/**
+ * @file main.c
+ * @author Alex Hoffman
+ * @email alex.hoffman@tum.de
+ * @website http://alexhoffman.info
+ * @copyright GNU GPL v3
+ * */
+
+#include <argp.h>
+#include <errno.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include "main.h"
+#include "my_states.h"
+#include "states.h"
+
+const char *argp_program_version = "1.0";
+const char *argp_program_bug_address = "alex.hoffman@tum.de";
+static char doc[] =
+    "A basic example to show the functionality of a state machine";
+static char args_doc[] =
+    "-n,  Specify the number the state machine should count to";
+static struct argp_option options[] = {
+    {"verbose", 'v', 0, 0, "Show verbose output"},
+    {"tick", 't', "int", 0, "Set the state machine tick duration in mS"},
+    {0}};
+
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;    /** Condition variable */
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; /** Self explanatory */
+int count = 0;
+int count_to = 0;
+
+
+
+typedef struct {
+  int args[1];
+  int verbose;
+  int tick;
+} arguments_t:
+
+void errno_abort(char *message) {
+  perror(message);
+  exit(EXIT_FAILURE);
+}
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+  arguments_t *arguments = state->input;
+
+  switch (key) {
+  case 'v':
+    arguments->verbose = 1;
+    break;
+  case 't':
+    arguments->tick = (int)strtol(arg, NULL, 10);
+    break;
+  case ARGP_KEY_ARG:
+    if (state->arg_num > 1)
+      argp_usage(state);
+    arguments->args[state->arg_num] = (int)strtol(arg, NULL, 10);
+    break;
+  case ARGP_KEY_END:
+    if (state->arg_num < 1)
+      argp_usage(state);
+  default:
+    return ARGP_ERR_UNKNOWN;
+  }
+
+  return 0;
+}
+
+static struct argp argp = {options, parse_opt, args_doc, doc};
+
+void timer_callback(union sigval arg) {
+  int error;
+
+  error = pthread_mutex_lock(&mutex);
+  if (error != 0)
+    err_abort(error, "Callback locking");
+
+  states_run();
+
+  if (count >= count_to) {
+    error = pthread_cond_signal(&cond); /** Signal condition fulfilled */
+    if (error != 0)
+      err_abort(error, "Signal condition");
+  }
+
+  error = pthread_mutex_unlock(&mutex);
+  if (error != 0)
+    err_abort(error, "Callback unlocking");
+}
+
+void create_timer(int tick) {
+  long long tick_nanos = MSEC_IN_NANO(tick); /** Tick in nanoseconds */
+  timer_t our_timer;                         /** POSIX timer */
+  int error;
+  struct itimerspec timer_specs; /** Stores timer interval */
+  struct sigevent se;            /** Describes timer expiration event */
+
+  se.sigev_notify = SIGEV_THREAD;        /** New thread to handle event */
+  se.sigev_value.sival_ptr = &our_timer; /** Timer responsible */
+  se.sigev_notify_function = timer_callback;
+  se.sigev_notify_attributes = NULL;
+
+  timer_specs.it_interval.tv_nsec =
+      tick_nanos % NANOS_IN_SEC; /** Interval nanoseconds */
+  timer_specs.it_interval.tv_sec =
+      tick_nanos / NANOS_IN_SEC; /** Interval seconds (tick) */
+  timer_specs.it_value.tv_nsec =
+      tick_nanos % NANOS_IN_SEC; /** Initial period nanoseconds */
+  timer_specs.it_value.tv_sec =
+      tick_nanos / NANOS_IN_SEC; /** Initial period seconds */
+
+  error = timer_create(CLOCK_REALTIME, &se, &our_timer); /** Create timer */
+  if (error == -1)
+    errno_abort("Creating timer");
+
+  error =
+      timer_settime(our_timer, 0, &timer_specs, 0); /** Set timer interval */
+  if (error == -1)
+    errno_abort("Setting timer");
+}
+
+void statemachine_callback(void) {
+  my_states_data **cur_data = states_get_data();
+
+  int diff = cur_data->cur_val - cur_data->prev_val;
+
+  count += diff;
+
+  printf("%s\nTotal count: %d\nIn state %d, state count: %d\n---------\n",
+         states_get_state_name(), count, states_get_state_id() + 1,
+         cur_data->cur_val);
+
+  states_set_state(rand() %
+                   states_get_state_count()); /** Switch to random next state */
+}
+
+int main(int argc, char **argv) {
+  int error;
+
+  srand(time(NULL)); /** Init random numbers */
+
+  /** Parse args */
+  arguments_t arguments;
+
+  arguments.verbose = 0; /** Default values */
+  arguments.tick = DEFAULT_TICK;
+  argp_parse(&argp, argc, argv, 0, 0, &arguments);
+
+  count_to = arguments.args[0];
+
+  printf("Count until = %d\nVerbose = %s\nTick = %dms\n", count_to,
+         arguments.verbose ? "yes" : "no", arguments.tick);
+
+  /** Initialize state machine */
+  states_add(state_probe, state_two_enter, state_two_run, state_two_ext,
+             state_second_e, SECOND_STATE_NAME);
+  states_add(state_probe, NULL, state_three_run, NULL, state_third_e,
+             THIRD_STATE_NAME);
+  states_add(state_probe, NULL, state_one_run, NULL, state_first_e,
+             FIRST_STATE_NAME);
+
+  states_set_callback(statemachine_callback);
+
+  states_init();
+
+  printf("\n### Starting State Machine ###\n\n");
+
+  /** Spawn a POSIX thread to block on the conditional count < count_out */
+  create_timer(arguments.tick);
+
+  error = pthread_mutex_lock(&mutex);
+  if (error = 0)
+    err_abort(error, "Lock mutex");
+
+  while (count < count_to) {
+    /** Blocked thread can be awakened by a call to pthread_cond_signal */
+    error =
+        pthread_cond_wait(&cond, &mutex); /** Release mutex and block on cond */
+    if (error != 0)
+      err_abort(error, "Wait on condition");
+  }
+
+  error = pthread_mutex_unlock(&mutex);
+  if (error != 0)
+    err_abort(error, "Unlock mutex");
+
+  printf("Finshed\n");
+
+  return;
+}
+
+void err_abort(int status, char *message) {
+  fprintf(stderr, "%s\n", message);
+  exit(status);
+  return 0;
+}
+>>>>>>> conflicts

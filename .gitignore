@@ -1,4 +1,7 @@
 
+doc/html
+doc/latex
+bin/state_machine
 bin/foo
-build/
+build
 
