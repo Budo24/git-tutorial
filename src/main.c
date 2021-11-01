@@ -52,7 +52,7 @@ pthread_cond_t cond = PTHREAD_COND_INITIALIZER;    /** Condition variable */
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; /** Self explanatory */
 int count = 0;
 
-int *count_too = 0;
+int count_to = 0;
 
 
 typedef struct {
@@ -147,11 +147,9 @@ void create_timer(int tick) {
 }
 
 void statemachine_callback(void) {
-<<<<<<< HEAD
-  my_states_data **cur_data = states_get_data();
-=======
+
   my_states_data *cur_data = states_get_data();
->>>>>>> unknown_features
+
 
   int diff = cur_data->cur_val - cur_data->prev_val;
 
@@ -166,7 +164,7 @@ void statemachine_callback(void) {
 }
 
 
-int main(int argc, char argv) {
+int main(int argc, char** argv) {
 
   int error;
 
@@ -186,7 +184,7 @@ int main(int argc, char argv) {
 
   /** Initialize state machine */
 
-  states_add(timer_callback, NULL, state_one_run, NULL, state_first_x,
+  states_add(state_probe, NULL, state_one_run, NULL, state_first_e,
              FIRST_STATE_NAME);
   states_add(state_probe, state_two_enter, state_two_run, state_two_exit,
              state_second_e, SECOND_STATE_NAME);
@@ -205,7 +203,7 @@ int main(int argc, char argv) {
 
   error = pthread_mutex_lock(&mutex);
 
-  if (!error)
+  if (error)
 
     err_abort(error, "Lock mutex");
 
