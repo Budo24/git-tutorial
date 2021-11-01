@@ -234,4 +234,4 @@ int err_abort(int status, char *message) {
   exit(status);
   return 0;
 }
->>>>>>> conflicts
+
