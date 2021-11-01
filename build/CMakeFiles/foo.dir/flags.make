@@ -4,7 +4,7 @@
 # compile C with /usr/bin/cc
 C_DEFINES = 
 
-C_INCLUDES = -I/home/sabahudin/ESPL_code/git-tutorial/include
+C_INCLUDES = -I/home/sabahudin/ESPL_code/git-tutorial/include -I/home/sabahudin/ESPL_code/git-tutorial/lib
 
 C_FLAGS = -g
 

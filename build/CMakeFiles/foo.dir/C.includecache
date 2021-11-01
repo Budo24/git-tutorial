@@ -6,7 +6,25 @@
 
 #IncludeRegexTransform: 
 
-/home/sabahudin/ESPL_code/git-tutorial/src/main.c
+../lib/espl_lib.c
+math.h
+-
 stdio.h
+-
+stdlib.h
+-
+string.h
+-
+
+/home/sabahudin/ESPL_code/git-tutorial/src/main.c
+math.h
+-
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+espl_lib.c
 -
 
