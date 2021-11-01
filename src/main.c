@@ -56,6 +56,12 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; /** Self explanatory */
 int count = 0;
 
 int count_to = 0;
+int err_abort(int status, char *message) {
+  fprintf(stderr, "%s\n", message);
+  exit(status);
+  return 0;
+}
+
 
 
 typedef struct {
@@ -229,9 +235,4 @@ int main(int argc, char** argv) {
 
 }
 
-int err_abort(int status, char *message) {
-  fprintf(stderr, "%s\n", message);
-  exit(status);
-  return 0;
-}
 
